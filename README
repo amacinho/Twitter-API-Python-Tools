@@ -1,3 +1,13 @@
+Introduction:
+
+This project contains Python scripts that can be executed from the command line to get
+
+profiles, statuses, friends, and followers of Twitter users. There is a certain level of robustness. The scripts expect their input from the standard input and output the their results in JSON to standard output.
+
+Dependencies:
+tweepy (https://github.com/tweepy/tweepy) and for Python < 2.6 simplejson (http://pypi.python.org/pypi/simplejson/).
+
+
 This file is part of Twitter API Python Tools (https://github.com/amacinho/Twitter-API-Python-Tools)
 Twitter API Tools is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
@@ -6,6 +16,12 @@ Twitter API Tools is distributed in the hope that it will be useful, but WITHOUT
 You should have received a copy of the GNU General Public License along Twitter API Tools. If not, see <http://www.gnu.org/licenses/>.
 
 Notes:
+
+Format of auth.txt:
+oauth.accessToken=************************************
+oauth.accessTokenSecret=************************************
+oauth.consumerKey=************************************
+oauth.consumerSecret=************************************
 
 Put twitter_common.py somewhere in PYTHONPATH. Fill in auth.txt as described above.
 
