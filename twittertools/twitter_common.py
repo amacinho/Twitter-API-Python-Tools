@@ -86,7 +86,7 @@ class TwitterTools:
             try:
                 req = self.api.rate_limit_status()
                 remaining = int(req["remaining_hits"])
-                sys.stderr.write("remaining: %d\n" % remaining)
+                #sys.stderr.write("remaining: %d\n" % remaining)
                 if remaining < 1:
                     sys.stderr.write("Not enough remaining hits. Sleeping 20 minutes before retry.\n\n")
                     time.sleep(1200)                
@@ -114,9 +114,11 @@ class TwitterTools:
                 
                 if response == None:
                     break
-            follower_ids.update(response[0])
-            sys.stderr.write(".")
-            next_cursor = response[1][1]
+            
+            if response != None:
+              follower_ids.update(response[0])
+              sys.stderr.write(".")
+              next_cursor = response[1][1]
         return follower_ids
 
     def get_all_friends_by_id(self, user_id):
@@ -177,7 +179,18 @@ class TwitterTools:
                 sys.stderr.write("%s\n" % (str(e)))            
 
         return statuses
-
+        
+    def get_profiles_by_id(self, ids, chunk_size=99):
+      id_chunks = [ids[i:i+chunk_size] for i in range(0, len(ids), chunk_size)]
+      responses = []
+      
+      for chunk in id_chunks:
+        self.get_access()
+        response = [user for user in self.api.lookup_users(chunk)]
+        responses += response
+        sys.stderr.write('.')
+      
+      return responses
 
 def jsonize_user(user):
     """Remove status and _api fields and returns a JSON string for the user variable."""
