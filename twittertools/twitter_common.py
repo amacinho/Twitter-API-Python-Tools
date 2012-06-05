@@ -100,6 +100,7 @@ class TwitterTools:
         next_cursor = -1
         follower_ids = set()
         # Iterates over the paginated results
+        retry = 0
         while next_cursor != 0:        
             while True:
                 try:
@@ -110,15 +111,26 @@ class TwitterTools:
                         # Ignores the users with protected accounts.
                         response = None
                         break
+                    elif str(e) == "Over capacity":
+                      #Over capacity
+                      time.sleep(5*retry)
+                      response = None
+                      break    
                     raise
-                
+                    
                 if response == None:
                     break
             
-            if response != None:
+            if response == None:
+              retry += 1
+              if retry > 5:
+                next_cursor = 0
+            else:
               follower_ids.update(response[0])
               sys.stderr.write(".")
               next_cursor = response[1][1]
+              retry = 0
+  
         return follower_ids
 
     def get_all_friends_by_id(self, user_id):
@@ -156,12 +168,12 @@ class TwitterTools:
                 break
         return statuses
     
-    def get_robust_statuses_page(self, user_id, page, count=50):    
+    def get_robust_statuses_page(self, user_id, page, count=50, trim_user=False):    
         statuses = set()
         trial = 1
         while True:
             try:
-                responses = [jsonize_status(status) for status in self.api.user_timeline(user_id=user_id, count=count, page=page+1)]
+                responses = [jsonize_status(status) for status in self.api.user_timeline(user_id=user_id, count=count, page=page+1, trim_user=trim_user)]
                 if responses:
                     statuses.update(set(responses))
                 else:
