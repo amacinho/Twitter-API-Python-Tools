@@ -86,7 +86,7 @@ class TwitterTools:
             try:
                 req = self.api.rate_limit_status()
                 remaining = int(req["remaining_hits"])
-                sys.stderr.write("remaining: %d\n" % remaining)
+                #sys.stderr.write("remaining: %d\n" % remaining)
                 if remaining < 1:
                     sys.stderr.write("Not enough remaining hits. Sleeping 20 minutes before retry.\n\n")
                     time.sleep(1200)                
@@ -100,6 +100,7 @@ class TwitterTools:
         next_cursor = -1
         follower_ids = set()
         # Iterates over the paginated results
+        retry = 0
         while next_cursor != 0:        
             while True:
                 try:
@@ -110,13 +111,26 @@ class TwitterTools:
                         # Ignores the users with protected accounts.
                         response = None
                         break
+                    elif str(e) == "Over capacity":
+                      #Over capacity
+                      time.sleep(5*retry)
+                      response = None
+                      break    
                     raise
-                
+                    
                 if response == None:
                     break
-            follower_ids.update(response[0])
-            sys.stderr.write(".")
-            next_cursor = response[1][1]
+            
+            if response == None:
+              retry += 1
+              if retry > 5:
+                next_cursor = 0
+            else:
+              follower_ids.update(response[0])
+              sys.stderr.write(".")
+              next_cursor = response[1][1]
+              retry = 0
+  
         return follower_ids
 
     def get_all_friends_by_id(self, user_id):
@@ -154,12 +168,12 @@ class TwitterTools:
                 break
         return statuses
     
-    def get_robust_statuses_page(self, user_id, page, count=50):    
+    def get_robust_statuses_page(self, user_id, page, count=50, trim_user=False):    
         statuses = set()
         trial = 1
         while True:
             try:
-                responses = [jsonize_status(status) for status in self.api.user_timeline(user_id=user_id, count=count, page=page+1)]
+                responses = [jsonize_status(status) for status in self.api.user_timeline(user_id=user_id, count=count, page=page+1, trim_user=trim_user)]
                 if responses:
                     statuses.update(set(responses))
                 else:
@@ -177,7 +191,18 @@ class TwitterTools:
                 sys.stderr.write("%s\n" % (str(e)))            
 
         return statuses
-
+        
+    def get_profiles_by_id(self, ids, chunk_size=99):
+      id_chunks = [ids[i:i+chunk_size] for i in range(0, len(ids), chunk_size)]
+      responses = []
+      
+      for chunk in id_chunks:
+        self.get_access()
+        response = [user for user in self.api.lookup_users(chunk)]
+        responses += response
+        sys.stderr.write('.')
+      
+      return responses
 
 def jsonize_user(user):
     """Remove status and _api fields and returns a JSON string for the user variable."""
