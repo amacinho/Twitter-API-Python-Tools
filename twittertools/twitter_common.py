@@ -133,7 +133,7 @@ class TwitterTools:
   
         return follower_ids
 
-    def get_all_friends_by_id(self, user_id):
+    def get_all_friends_by_id(self, user_id, min_friends=1000000000):
         next_cursor = -1
         friends_ids = set()
         # Iterates over the paginated results
@@ -152,6 +152,8 @@ class TwitterTools:
                 if response == None:
                     break
             friends_ids.update(response[0])
+            if len(friends_ids) >= min_friends:
+                return friends_ids
             sys.stderr.write(".")
             next_cursor = response[1][1]
         return friends_ids
