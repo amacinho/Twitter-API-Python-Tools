@@ -96,66 +96,80 @@ class TwitterTools:
                 sys.stderr.write("Unknown error while trying to get quota. Sleeping 5 seconds before retry.\n\n")
                 time.sleep(5)
 
-    def get_all_followers_by_id(self, user_id):
+    def get_all_followers_by_id(self, user_id, max_retry=3):
         next_cursor = -1
         follower_ids = set()
         # Iterates over the paginated results
-        retry = 0
-        while next_cursor != 0:        
-            while True:
+        while next_cursor != 0:
+            for retry in range(max_retry):
+                response = None
                 try:
                     response = self.api.followers_ids(user_id=user_id, cursor=next_cursor)
                     break
                 except tweepy.error.TweepError, e:
-                    if str(e) == "Not authorized":
-                        # Ignores the users with protected accounts.
-                        response = None
-                        break
-                    elif str(e) == "Over capacity":
-                      #Over capacity
-                      time.sleep(5*retry)
-                      response = None
-                      break    
-                    raise
-                    
-                if response == None:
-                    break
-            
+                    # Parse error message
+                    if e.response:
+                        status = e.response.status
+                    elif str(e).startswith("Failed to send request"):
+                        status = 404
+                    else: # unexpected error
+                        print >> sys.stderr, "ERROR in get_all_followers_by_id", str(e)
+                        raise
+                                
             if response == None:
-              retry += 1
-              if retry > 5:
-                next_cursor = 0
-            else:
-              follower_ids.update(response[0])
-              sys.stderr.write(".")
-              next_cursor = response[1][1]
-              retry = 0
-  
+                return None
+
+            try:               
+                follower_ids.update(response[0])
+                sys.stderr.write(".")
+                next_cursor = response[1][1]
+                retry = 0
+            except:
+                print >> sys.stderr, "ERROR in get_all_friends_by_id", str(e)
+                return None
+            
         return follower_ids
 
-    def get_all_friends_by_id(self, user_id, min_friends=1000000000):
+    def get_all_friends_by_id(self, user_id, min_friends=1000000000, max_retry=3):
         next_cursor = -1
         friends_ids = set()
         # Iterates over the paginated results
-        while next_cursor != 0:        
-            while True:
+        while next_cursor != 0:
+            for retry in range(max_retry):
+                response = None
                 try:
                     response = self.api.friends_ids(user_id=user_id, cursor=next_cursor)
                     break
                 except tweepy.error.TweepError, e:
-                    if str(e) == "Not authorized":
-                        # Ignores the users with protected accounts.
-                        response = None
-                        break
-                    raise
+                    # Parse error message
+                    if e.response:
+                        status = e.response.status
+                    elif str(e).startswith("Failed to send request"):
+                        status = 404
+                    else: # unexpected error
+                        print >> sys.stderr, "ERROR in get_all_friends_by_id", str(e)
+                        raise
+                    
+                    if status == 401: # not authorized, do not try anymore
+                        return None
+                    elif status == 404: # page not found, try the same cursor
+                        continue
+                    else:
+                        raise
                 
-                if response == None:
-                    break
-            friends_ids.update(response[0])
-            if len(friends_ids) >= min_friends:
-                return friends_ids
-            sys.stderr.write(".")
-            next_cursor = response[1][1]
+            if response == None:
+                # Failed to fetch a given cursor page
+                return None
+            
+            try:
+                friends_ids.update(response[0])
+                if len(friends_ids) >= min_friends:
+                    return friends_ids
+                sys.stderr.write(".")
+                next_cursor = response[1][1]
+            except:
+                print >> sys.stderr, "ERROR in get_all_friends_by_id", str(e)
+                return None                
         return friends_ids
 
     def get_all_statuses_by_id(self, user_id, page=5, rpp=50):

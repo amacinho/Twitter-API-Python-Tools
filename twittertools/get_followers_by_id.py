@@ -9,8 +9,10 @@ import time
 
 from twitter_common import *
 
+auth_file = sys.argv[1]
+
 api_tools = TwitterTools()
-api_tools.get_api()
+api_tools.get_api(auth_file)
 api_tools.get_access()
 for ct,user_id in enumerate(sys.stdin):
     user_id = user_id.strip()
@@ -18,7 +20,11 @@ for ct,user_id in enumerate(sys.stdin):
     
     follower_ids = api_tools.get_all_followers_by_id(user_id)
     
-    sys.stderr.write(" Done: fetched %d followers\n" % (len(follower_ids)))
-    print "\n".join(["%s\t%s" % (user_id,str(id)) for id in follower_ids])
+    if follower_ids != None:
+        sys.stderr.write(" Done: fetched %d followers\n" % (len(follower_ids)))
+        print "\n".join(["%s\t%s" % (user_id,str(id)) for id in follower_ids])
+    else:
+        sys.stderr.write(" Problem for %s: fetched no followers\n" % (user_id))
+        
 
 
