@@ -133,6 +133,7 @@ class TwitterTools:
     def get_all_friends_by_id(self, user_id, max_friends=1000000000, max_retry=3):
         next_cursor = -1
         friends_ids = set()
+        print >> sys.stderr, "DEBUG max_friends %d" % max_friends
         # Iterates over the paginated results
         while next_cursor != 0:
             for retry in range(max_retry):
