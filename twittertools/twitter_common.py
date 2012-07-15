@@ -96,39 +96,54 @@ class TwitterTools:
                 sys.stderr.write("Unknown error while trying to get quota. Sleeping 5 seconds before retry.\n\n")
                 time.sleep(5)
 
-    def get_all_followers_by_id(self, user_id, max_retry=3):
+    def get_all_followers_by_id(self, user_id, max_followers=1000000000, max_retry=3):
+        print >> sys.stderr, "DEBUG", "get_followers_entered"
         next_cursor = -1
-        follower_ids = set()
+        followers_ids = set()
         # Iterates over the paginated results
         while next_cursor != 0:
             for retry in range(max_retry):
                 response = None
                 try:
+                    print >> sys.stderr, "DEBUG", "api called"
                     response = self.api.followers_ids(user_id=user_id, cursor=next_cursor)
+                    print >> sys.stderr, "DEBUG", "api returned"
                     break
                 except tweepy.error.TweepError, e:
+                    print >> sys.stderr, "ERROR in get_all_followers_by_id", str(e)
+                    time.sleep(1)
                     # Parse error message
                     if e.response:
                         status = e.response.status
                     elif str(e).startswith("Failed to send request"):
                         status = 404
                     else: # unexpected error
-                        print >> sys.stderr, "ERROR in get_all_followers_by_id", str(e)
                         raise
-                                
+                    
+                    if status == 401: # not authorized, do not try anymore
+                        print >> sys.stderr, "ERROR (401) in get_all_followers_by_id", str(e)
+                        return None
+                    elif status == 404: # page not found, try the same cursor
+                        continue
+                    else:
+                        raise
+                                                    
             if response == None:
+                print >> sys.stderr, "ERROR in get_all_followers_by_id response is None"
                 return None
 
             try:               
-                follower_ids.update(response[0])
+                followers_ids.update(response[0])
+                print >> sys.stderr, "DEBUG", "%d followers are collected (%d)" % (len(followers_ids),next_cursor)
+                if len(followers_ids) >= max_followers:
+                    return followers_ids                
                 sys.stderr.write(".")
                 next_cursor = response[1][1]
-                retry = 0
-            except:
-                print >> sys.stderr, "ERROR in get_all_friends_by_id", str(e)
+            except Exception, e:
+                print >> sys.stderr, "ERROR in get_all_followers_by_id", str(e)
                 return None
-            
-        return follower_ids
+        print >> sys.stderr, "DEBUG", "%d followers are returned" % len(followers_ids)
+        return followers_ids
 
     def get_all_friends_by_id(self, user_id, max_friends=1000000000, max_retry=3):
         next_cursor = -1
@@ -168,7 +183,7 @@ class TwitterTools:
                     return friends_ids
                 sys.stderr.write(".")
                 next_cursor = response[1][1]
-            except:
+            except Exception, e:
                 print >> sys.stderr, "ERROR in get_all_friends_by_id", str(e)
                 return None                
         return friends_ids
